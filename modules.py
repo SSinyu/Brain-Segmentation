@@ -111,7 +111,7 @@ class VNet(Model):
         mc.reverse()
         mn.reverse()
         self.expands = [
-            ExpansionBlock(ch*c, n, False if (i+1)==len(mc) else upsample)
+            ExpansionBlock(ch*c, n, False if (i+2)==len(mc) else upsample)
             for i, (c, n) in enumerate(zip(mc[:-1], mn[1:]))]
         self.outputs = Sequential([
             BasicBlock(n_classes, k=1),
