@@ -74,7 +74,7 @@ class XceptionBlock(layers.Layer):
         # self.sepconv_2 = SeparableConvBlock(n_filters[1], 3, 1, d_rate, activation)
         # self.sepconv_3 = SeparableConvBlock(n_filters[2], 3, stride, d_rate, activation)
         self.sepconv_blocks = [
-            SeparableConvBlock(n_filters[i], 3, 1 if i<2 else stride, d_rate, activation) for i in range(3)
+            SeparableConvBlock(n_filters[i], 3, stride if i==2 else 1, d_rate, activation) for i in range(3)
         ]
 
         self.skip_type = skip_type
@@ -124,8 +124,8 @@ class XceptionBackbone(layers.Layer):
             XceptionBlock([728]*3, "sum", 1, d_rates[0]) for _ in range(16)
         ]
         self.exit_flow = [
-            XceptionBlock([728,728,1024], "conv", 1, d_rates[1]),
-            XceptionBlock([1536,1536,1536], None, 1, d_rates[2], True)
+            XceptionBlock([728,1024,1024], "conv", 1, d_rates[1]),
+            XceptionBlock([1536,1536,2048], None, 1, d_rates[2], True)
         ]
 
     def call(self, x, training=None):
@@ -189,9 +189,9 @@ class DeepLabV3Decoder(layers.Layer):
 
         self.sigmoid = layers.Activation("sigmoid")
 
-    def call(self, x, skip, training=None):
-        x_shape = x._shape_tuple()[1:3]
-        x = tf.image.resize(x, x_shape, "bilinear")
+    def call(self, x, skip, input_shape, training=None):
+        skip_shape = skip._shape_tuple()[1:3]
+        x = tf.image.resize(x, skip_shape, "bilinear")
 
         skip = self.skip_block(skip)
 
@@ -200,8 +200,7 @@ class DeepLabV3Decoder(layers.Layer):
         x = self.sepconv2(x)
         x = self.conv(x)
 
-        skip_shape = skip._shape_tuple()[1:3]
-        x = tf.image.resize(x, skip_shape, "bilinear")
+        x = tf.image.resize(x, input_shape, "bilinear")
         return self.sigmoid(x)
 
 
@@ -213,9 +212,11 @@ class DeepLabV3pXc(Model):
         self.decoder = DeepLabV3Decoder(n_classes)
 
     def call(self, x, training=None):
+        input_shape = x._shape_tuple()[1:3]
+
         x, skip = self.backbone(x)
         x = self.aspp(x)
-        x = self.decoder(x, skip)
+        x = self.decoder(x, skip, input_shape)
         return x
 
     def get_summary(self, input_shape=(256,256,3)):
