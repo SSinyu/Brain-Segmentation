@@ -2,23 +2,23 @@ import cv2
 import numpy as np
 from math import ceil
 from tensorflow.keras import utils
-from albumentation import Compose, ElasticTransform, GridDistortion
+from albumentations import Compose, ElasticTransform, GridDistortion, CLAHE
 
 from utils import percentile_thresholding, min_max_norm, get_subjects, get_pair
 
 
 class DataLoader(utils.Sequence):
-    def __init__(self, mode, data_dirs, batch_size, input_size=None):
+    def __init__(self, mode, data_dir, batch_size, input_size=None):
         super(DataLoader, self).__init__()
         assert mode in ["train", "valid", "test"]
 
         self.mode = mode
         if mode == "train":
-            subjs, _, _ = get_subjects(data_dirs)
+            subjs, _, _ = get_subjects(data_dir)
         elif mode == "valid":
-            _, subjs, _ = get_subjects(data_dirs)
+            _, subjs, _ = get_subjects(data_dir)
         else:
-            _, _, subjs = get_subjects(data_dirs)
+            _, _, subjs = get_subjects(data_dir)
 
         self.images, self.masks = get_pair(subjs)
         self.indexes = np.arange(len(self.images))
@@ -41,9 +41,10 @@ class DataLoader(utils.Sequence):
         indexes = self.indexes[idx*self.batch_size : (idx+1)*self.batch_size]
         return self.__getbatch__(indexes)
 
-    def set_params(self, grid_distort=0., elastic_deform=0.):
+    def set_params(self, grid_distort=0., elastic_deform=0., histeq=0.):
         self.prob_distort = grid_distort
         self.prob_elastic = elastic_deform
+        self.prob_histeq = histeq
 
     def on_epoch_end(self):
         if self.mode == "train":
@@ -84,7 +85,8 @@ class DataLoader(utils.Sequence):
     def get_augmentation(self):
         self.aug = Compose([
             GridDistortion(num_steps=3, p=self.prob_distort),
-            ElasticTransform(p=self.prob_elastic)
+            ElasticTransform(p=self.prob_elastic),
+            CLAHE(p=self.prob_histeq)
         ])
 
     def __getbatch__(self, indexes):
@@ -96,11 +98,11 @@ class DataLoader(utils.Sequence):
             mask = cv2.imread(self.masks[i])
             if self.mode == "train":
                 image, mask = self.pad_and_random_crop(image, mask, self.input_size[:2])
-                image = self.prep(image)
                 mask //= 225
                 data = {"image":image, "mask":mask}
                 aug = self.aug(**data)
                 image, mask = aug["image"], aug["mask"]
+                image = self.prep(image)
 
             bx[bi], by[bi] = image, mask
         return bx, by
