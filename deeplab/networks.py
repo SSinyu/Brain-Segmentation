@@ -9,9 +9,9 @@ class ASPP(layers.Layer):
         d_rates = (12,24,36) if output_stride==8 else (6,12,18)
 
         self.block_1x1 = BasicBlock(256, 1, 1)
-        self.block_3x3_rate_S = ock(256, d_rate=d_rates[0], activation=True)
-        self.block_3x3_rate_M = ock(256, d_rate=d_rates[1], activation=True)
-        self.block_3x3_rate_L = ock(256, d_rate=d_rates[2], activation=True)
+        self.block_3x3_rate_S = BasicBlock(256, d_rate=d_rates[0], activation=True)
+        self.block_3x3_rate_M = BasicBlock(256, d_rate=d_rates[1], activation=True)
+        self.block_3x3_rate_L = BasicBlock(256, d_rate=d_rates[2], activation=True)
         self.blocks_pooling = [
             layers.GlobalAveragePooling2D(),
             layers.Lambda(lambda x: x[:, tf.newaxis, tf.newaxis, :]),
@@ -43,8 +43,8 @@ class DeepLabV3Decoder(layers.Layer):
         self.skip_block = BasicBlock(48, 1, 1)
         self.concat = layers.Concatenate()
 
-        self.sepconv1 = ock(256, activation=True)
-        self.sepconv2 = ock(256, activation=True)
+        self.sepconv1 = SeparableConvBlock(256, activation=True)
+        self.sepconv2 = SeparableConvBlock(256, activation=True)
         self.conv = layers.Conv2D(n_classes, 1, 1, "same")
 
         self.sigmoid = layers.Activation("sigmoid")
