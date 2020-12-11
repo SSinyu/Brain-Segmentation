@@ -11,10 +11,10 @@ def main(config):
 
     mode = config["mode"]
 
-    save_path = Path("./save") / config["version"]
+    save_path = Path(config["training"]["save_path"]) / config["version"]
     save_path.mkdir(parents=True, exist_ok=True)
     config["save_path"] = save_path
-
+    
     datasets = DataLoader(
         mode,
         **config["dataset"]
