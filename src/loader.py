@@ -4,21 +4,24 @@ from math import ceil
 from tensorflow.keras import utils
 from albumentations import Compose, ElasticTransform, GridDistortion, CLAHE
 
-from utils import percentile_thresholding, min_max_norm, get_subjects, get_pair
+from src.utils import percentile_thresholding, min_max_norm, get_subjects, get_pair
 
+missing_subj = []
 
 class DataLoader(utils.Sequence):
-    def __init__(self, mode, data_dir, batch_size, input_size=None):
+    def __init__(self, mode, data_path, batch_size, input_size=None, **kwargs):
         super(DataLoader, self).__init__()
         assert mode in ["train", "valid", "test"]
 
         self.mode = mode
+        train_subjs, valid_subjs, test_subjs = get_subjects(data_path)
+
         if mode == "train":
-            subjs, _, _ = get_subjects(data_dir)
+            subjs = train_subjs
         elif mode == "valid":
-            _, subjs, _ = get_subjects(data_dir)
+            subjs = valid_subjs
         else:
-            _, _, subjs = get_subjects(data_dir)
+            subjs = test_subjs
 
         self.images, self.masks = get_pair(subjs)
         self.indexes = np.arange(len(self.images))
@@ -30,6 +33,7 @@ class DataLoader(utils.Sequence):
             self.input_size = tmp_input.shape
         else:
             self.input_size = input_size
+
         self.on_epoch_end()
         self.set_params()
         self.get_augmentation()
@@ -102,7 +106,9 @@ class DataLoader(utils.Sequence):
                 data = {"image":image, "mask":mask}
                 aug = self.aug(**data)
                 image, mask = aug["image"], aug["mask"]
+            else:
                 image = self.prep(image)
+                mask //= 225
 
             bx[bi], by[bi] = image, mask
-        return bx, by
+        return bx, by[...,0][...,np.newaxis]
