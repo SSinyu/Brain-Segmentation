@@ -1,3 +1,5 @@
+from tqdm import tqdm
+from pathlib import Path
 import tensorflow as tf
 from tensorflow.keras import optimizers, metrics
 
@@ -10,12 +12,7 @@ class Solver:
     def __init__(self, config, datasets):
         self.config = config
         self.datasets = datasets
-
         self.mode = config["mode"]
-        if config["mode"] == "train":
-            self.val_datasets = DataLoader(
-                "valid", **config["dataset"]
-            )
 
         training_config = config["training"]
         self.epochs = training_config["epochs"]
@@ -26,7 +23,6 @@ class Solver:
         self.model = model_func(
             **config[config["model"]["type"]]
         )
-
         lr = scheduler.CosineAnnealingScheduler(
             training_config["init_learning_rate"],
             training_config["epochs"]
@@ -38,7 +34,19 @@ class Solver:
         self.bce = losses.BinaryCrossEntropyLoss()
         self.dice = losses.DiceLoss()
 
-        self.get_ckpt_manager(training_config["save_path"])
+        self.train_bce = metrics.Mean()
+        self.train_dice = metrics.Mean()
+        self.train_iou = metrics.MeanIoU(num_classes=2)
+
+        if config["mode"] == "train":
+            self.valid_datasets = DataLoader(
+                "valid", **config["dataset"]
+            )
+        self.test_bce = metrics.Mean()
+        self.test_dice = metrics.Mean()
+        self.test_iou = metrics.MeanIoU(num_classes=2)
+
+        self.get_ckpt_manager(config["save_path"])
 
     def get_ckpt_manager(self, ckpt_path, keep=5):
         self.ckpt = tf.train.Checkpoint(model=self.model, optimizer=self.optimizer)
@@ -46,31 +54,58 @@ class Solver:
 
     def train(self):
         n_iters = len(self.datasets)
-        val_loss = 1e6
+        valid_loss = 1e6
         for epoch in range(self.epochs):
+            self.n_reset()
             for (i, (image, mask)) in enumerate(self.datasets):
-                bce_loss, dice_loss = self.train_batch(image, mask)
+                self.train_batch(image, mask)
 
                 if (i+1) % self.print_iter == 0:
-                    print(f"[{epoch+1}/{self.epochs}] Epoch, [{i+1}/{n_iters}] Iter")
-                    print(f"BCE Loss : {bce_loss:.5f}, DICE Loss : {dice_loss:.5f}")
+                    print(f"[{epoch+1}/{self.epochs}] Epoch, [{i+1}/{n_iters}] Iter ==> ", end=" ")
+                    print(f"BCE Loss: {self.train_bce.result():.5f}", end="  ")
+                    print(f"Dice Loss: {self.train_dice.result():.5f}", end="  ")
+                    print(f"IoU: {self.train_iou.result():.5f}")
 
-            v_bce, v_dice = self.valid_steps()
-            v_total = v_bce + v_dice
+            self.test_steps(True)
             print(f"===== [{epoch+1}/{self.epochs}] Epoch")
-            print(f"===== val BCE : {v_bce:.5f}, val DICE : {v_dice:.5f}, val Total : {v_total:.5f}")
+            print(f"===== valid BCE: {self.test_bce.result():.5f}", end="  ")
+            print(f"valid DICE: {self.test_dice.result():.5f}", end="  ")
+            print(f"valid IoU: {self.test_iou.result():.5f}")
 
-            if v_total < val_loss:
-                val_loss = v_total
+            valid_total = self.bce_w * self.test_bce.result().numpy() + \
+                        self.dice_w * self.test_dice.result().numpy()
+            if valid_total < valid_loss:
+                print(f"Validation loss reduced from {valid_loss:.5f} to {valid_total:.5f}")
+                valid_loss = valid_total
                 ckpt_save_path = self.ckpt_manager.save()
 
             if (epoch+1) % self.save_epoch == 0:
-                f = self.config["save_path"] + f"/epoch_{epoch+1}.h5"
-                self.model.save_weights(f)
-                print("save ", f)
+                f = self.config["save_path"] / Path(f"epoch_{epoch+1}.h5")
+                self.model.save_weights(str(f))
+                print("save ", str(f))
 
-    def test(self):
-        raise NotImplementedError
+    def test(self, ep=None):
+        self.load_weight(ep)
+        self.test_steps(False)
+        print(f"==> test BCE: {self.test_bce.result():.5f}")
+        print(f"==> test DICE: {self.test_dice.result():.5f}")
+        print(f"==> test IoU: {self.test_iou.result():.5f}")
+
+    def n_reset(self):
+        self.train_bce.reset_states()
+        self.train_dice.reset_states()
+        self.train_iou.reset_states()
+        self.test_bce.reset_states()
+        self.test_dice.reset_states()
+        self.test_iou.reset_states()
+
+    def load_weight(self, ep=None):
+        f = str(self.config["save_path"])
+        if ep is None:
+            self.ckpt.restore(tf.train.latest_checkpoint(f)).expect_partial()
+        else:
+            f = f / f"/epoch_{ep}.h5"
+            self.model.load_weights(f)
 
     @tf.function
     def train_batch(self, image, mask):
@@ -84,22 +119,23 @@ class Solver:
         self.optimizer.apply_gradients(
             zip(grads, self.model.trainable_variables)
         )
-        return bce_loss, dice_loss
-
-    def valid_steps(self):
-        bce_loss, dice_loss = 0., 0.
-        for v_image, v_mask in self.val_datasets:
-            _bce, _dice = self.valid_batch(v_image, v_mask)
-            bce_loss += _bce
-            dice_loss += _dice
-        bce_loss /= len(self.val_datasets)
-        dice_loss /= len(self.val_datasets)
-        return bce_loss, dice_loss
+        self.train_bce(bce_loss)
+        self.train_dice(dice_loss)
+        self.train_iou(mask, tf.sigmoid(pred))
 
     @tf.function
-    def valid_batch(self, image, mask):
-        with tf.GradientTape() as tape:
-            pred = self.model(image)
-            bce_loss = self.bce(mask, pred)
-            dice_loss = self.dice(mask, pred)
-        return bce_loss, dice_loss
+    def test_batch(self, image, mask):
+        pred = self.model(image)
+        bce_loss = self.bce(mask, pred)
+        dice_loss = self.dice(mask, pred)
+        self.test_bce(bce_loss)
+        self.test_dice(dice_loss)
+        self.test_iou(mask, tf.sigmoid(pred))
+
+    def test_steps(self, valid=True):
+        if valid:
+            datasets = self.valid_datasets
+        else:
+            datasets = self.datasets
+        for image, mask in tqdm(datasets):
+            self.test_batch(image, mask)
