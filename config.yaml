@@ -3,6 +3,10 @@ version: deeplabv3p-xception-bcedice
 dataset:
     data_path: ./lgg-mri-segmentation
     batch_size: 16
+augmentation:
+    grid_distort: 0.1
+    elastic_deform: 0.1
+    histeq: 0.1
 model:
     type: deeplabv3p
 optimizer:
@@ -16,8 +20,7 @@ training:
     bce_loss_weight: 1
     dice_loss_weight: 1
     save_path: ./save
-gpu_no: 0
+gpu_no: 1
 deeplabv3p:
     backbone: xception
     output_stride: 8
-    

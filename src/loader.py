@@ -6,7 +6,6 @@ from albumentations import Compose, ElasticTransform, GridDistortion, CLAHE
 
 from src.utils import percentile_thresholding, min_max_norm, get_subjects, get_pair
 
-missing_subj = []
 
 class DataLoader(utils.Sequence):
     def __init__(self, mode, data_path, batch_size, input_size=None, **kwargs):
@@ -100,15 +99,14 @@ class DataLoader(utils.Sequence):
         for bi, i in enumerate(indexes):
             image = cv2.imread(self.images[i])
             mask = cv2.imread(self.masks[i])
+
+            image = self.prep(image)
+            mask //= 225
             if self.mode == "train":
                 image, mask = self.pad_and_random_crop(image, mask, self.input_size[:2])
-                mask //= 225
                 data = {"image":image, "mask":mask}
                 aug = self.aug(**data)
                 image, mask = aug["image"], aug["mask"]
-            else:
-                image = self.prep(image)
-                mask //= 225
 
             bx[bi], by[bi] = image, mask
         return bx, by[...,0][...,np.newaxis]
