@@ -15,6 +15,18 @@ a_params = d_params.copy()
 a_params["kernel_size"] = 1
 
 
+def get_filters(n_filter=64, n_blocks=5):
+    mp = [1]
+    for i in range(2, n_blocks+1):
+        mp.append(mp[-1]*2)
+
+    enc_filters = [n_filter*i for i in mp]
+    if n_blocks > 5:
+        for i in range(n_blocks -5):
+            enc_filters.append(enc_filters[-1]*1)
+    dec_filters = enc_filters[:-1][::-1]
+    return enc_filters, dec_filters, mp
+
 
 class ConvBlock(layers.Layer):
     def __init__(self, n_filter):

@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Input, Model, Sequential
 from src.unet.modules import (
+    get_filters,
     ConvBlock,
     UpConvConcatBlock,
     UpConvAttConcatBlock
@@ -10,12 +11,7 @@ from src.unet.modules import (
 class UNet(Model):
     def __init__(self, n_filter=64, n_blocks=5, tconv=False):
         super(UNet, self).__init__()
-
-        enc_filters = [n_filter*i for i in [1,2,4,8,16]]
-        if n_blocks > 5:
-            for i in range(n_blocks - 5):
-                enc_filters.append(enc_filters[-1]*1)
-        dec_filters = enc_filters[:-1][::-1]
+        enc_filters, dec_filters, _ = get_filters(n_filter, n_blocks)
 
         self.enc_blocks = []
         for f in enc_filters:
@@ -58,12 +54,7 @@ class UNet(Model):
 class AttentionUNet(Model):
     def __init__(self, n_filter=64, n_blocks=5, tconv=False):
         super(AttentionUNet, self).__init__()
-
-        enc_filters = [n_filter*i for i in [1,2,4,8,16]]
-        if n_blocks > 5:
-            for i in range(n_blocks - 5):
-                enc_filters.append(enc_filters[-1]*1)
-        dec_filters = enc_filters[:-1][::-1]
+        enc_filters, dec_filters, _ = get_filters(n_filter, n_blocks)
 
         self.enc_blocks = []
         for f in enc_filters:
