@@ -1,20 +1,35 @@
-# BS
+# Brain-Segmentation
+Performance experiment and reporting of several semantic segmentation models in Low-Grade Glioma segmentation task.
 
+<br/>
+<br/>
+
+### Results
+
+|Model|Encoder<br/>(backbone)|Loss|Dice coefficient|IoU|
+|:----:|:----:|:----:|:----:|:----:|
+|[U-Net](https://arxiv.org/abs/1505.04597)|-|1*bce* + 2*dice*|0.831|0.743|
+|[Attention U-Net](https://arxiv.org/abs/1804.03999)|-|*bce* + *dice*|0.830|0.747|
+|[DeepLabV3+](https://arxiv.org/abs/1802.02611)|xception|*bce* + *dice*|0.824|0.787|
+|-|-|1*bce* + 2*dice*|0.849|0.809|
+|-|-|*dice*|**0.860**|**0.817**|
+
+<br/>
+
+#### Work in progress
+- [ ] U-Net++
+- [ ] U-squared Net
+- [ ] V-Net
+- [ ] U-Net+++
+
+<br/>
+<br/>
 
 ### Dataset
----
 LGG Segmentation Dataset from The Cancer Imaging Archive(TCIA)
 110 patients included in The Cancer Genome Atlas (TCGA) lower-grade glioma collection with at least fluid-attenuated inversion recovery (FLAIR) sequence and genomic cluster data available.
 
 Download it from [LGG Segmentation Dataset](https://www.kaggle.com/mateuszbuda/lgg-mri-segmentation)
-
-All images are provided in `.tif` format with 3 channels per image (pre-contrast, FLAIR, post-contrast). Masks are binary, 1-channel images. They segment FLAIR abnormality present in the FLAIR sequence.
-
-The dataset is organized into 110 folders named after case ID that contains information about source institution. Each folder contains MR images with the following naming convention:
-
-`TCGA_<institution-code>_<patient-id>_<slice-number>.tif`
-
-Corresponding masks have a `_mask` suffix.
 
 
 The dataset placing should look like:
@@ -43,11 +58,3 @@ The dataset placing should look like:
         └── ...
 
 -------
-
-
-
-### Model
----
-* U-Net / Attention U-Net / U-Net++ / U-Net+++
-* DeepLabV3+
-* V-Net
