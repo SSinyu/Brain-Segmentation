@@ -1,5 +1,8 @@
-mode: train
-version: deeplabv3p-xception-bcedice
+mode: train # train, test
+gpu_no: 0
+version: unet-dice
+model:
+    type: unet # deeplabv3p, attentionunet
 dataset:
     data_path: ./lgg-mri-segmentation
     batch_size: 16
@@ -7,8 +10,6 @@ augmentation:
     grid_distort: 0.1
     elastic_deform: 0.1
     histeq: 0.1
-model:
-    type: deeplabv3p
 optimizer:
     beta_1: 0.9
     beta_2: 0.98
@@ -20,7 +21,16 @@ training:
     bce_loss_weight: 1
     dice_loss_weight: 1
     save_path: ./save
-gpu_no: 1
+test:
+    epoch: False
 deeplabv3p:
     backbone: xception
     output_stride: 8
+unet:
+    n_filter: 64
+    n_blocks: 5
+    tconv: False
+attentionunet:
+    n_filter: 64
+    n_blocks: 5
+    tconv: False
