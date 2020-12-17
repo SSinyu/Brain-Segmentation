@@ -8,8 +8,9 @@ Performance experiment and reporting of several semantic segmentation models in 
 
 |Model|Encoder<br/>(backbone)|Loss|Dice coefficient|IoU|
 |:----:|:----:|:----:|:----:|:----:|
-|[U-Net](https://arxiv.org/abs/1505.04597)|-|1*bce* + 2*dice*|0.831|0.743|
-|[Attention U-Net](https://arxiv.org/abs/1804.03999)|-|*bce* + *dice*|0.830|0.747|
+|[U-Net](https://arxiv.org/abs/1505.04597)|-|*bce* + *dice*|0.699|0.692|
+|-|-|1*bce* + 2*dice*|0.662|0.708|
+|[Attention U-Net](https://arxiv.org/abs/1804.03999)|-|*bce* + *dice*|0.713|0.705|
 |[DeepLabV3+](https://arxiv.org/abs/1802.02611)|xception|*bce* + *dice*|0.824|0.787|
 |-|-|1*bce* + 2*dice*|0.849|0.809|
 |-|-|*dice*|**0.860**|**0.817**|
