@@ -4,7 +4,8 @@ from src.unet.modules import (
     get_filters,
     ConvBlock,
     UpConvConcatBlock,
-    UpConvAttConcatBlock
+    AttConcatBlock,
+    CustomAttConcatBlock
 )
 
 
@@ -50,9 +51,8 @@ class UNet(Model):
         return Model(inputs, self.call(inputs)).summary()
 
 
-
 class AttentionUNet(Model):
-    def __init__(self, n_filter=64, n_blocks=5, tconv=False):
+    def __init__(self, n_filter=64, n_blocks=5, att_type=None, tconv=False):
         super(AttentionUNet, self).__init__()
         enc_filters, dec_filters, _ = get_filters(n_filter, n_blocks)
 
@@ -64,7 +64,9 @@ class AttentionUNet(Model):
         self.att_blocks = []
         for i in range(n_blocks-1):
             self.att_blocks.append(
-                UpConvAttConcatBlock(enc_filters[-i], tconv))
+                AttConcatBlock(enc_filters[-i], tconv) if att_type is None else \
+                CustomAttConcatBlock(enc_filters[-i], dec_filters[i], att_type, tconv)
+                )
 
         self.dec_blocks = []
         for f in dec_filters:
@@ -90,4 +92,4 @@ class AttentionUNet(Model):
 
     def get_summary(self, input_shape=(256,256,1)):
         inputs = Input(input_shape)
-        return Model(inputs, self.call(inputs)).summary()
+        return Model(inputs, self.call(inputs)).summary(line_length=110)
