@@ -8,11 +8,13 @@ Performance experiment and reporting of several semantic segmentation models in 
 
 |Model|Encoder<br/>(backbone)|Loss|Dice coefficient|IoU|
 |:----:|:----:|:----:|:----:|:----:|
-|[U-Net](https://arxiv.org/abs/1505.04597)|-|*bce* + *dice*|0.699|0.692|
-|-|-|1*bce* + 2*dice*|0.662|0.708|
-|[Attention U-Net](https://arxiv.org/abs/1804.03999)|-|*bce* + *dice*|0.713|0.705|
-|[DeepLabV3+](https://arxiv.org/abs/1802.02611)|xception|*bce* + *dice*|0.824|0.787|
-|-|-|1*bce* + 2*dice*|0.849|0.809|
+|[U-Net](https://arxiv.org/abs/1505.04597)|-|*bce* + *dice*|0.746|0.724|
+|-|-|1*bce* + 2*dice*|0.721|0.734|
+|[Attention U-Net](https://arxiv.org/abs/1804.03999)|-|*bce* + *dice*|0.782|0.778|
+|-|-|1*bce* + 2*dice*|0.769|0.726|
+|Attention U-Net using [CBAM](https://arxiv.org/abs/1807.06521)|-|*bce* + *dice*|0.823|0.810|
+|[DeepLabV3+](https://arxiv.org/abs/1802.02611)|xception|*bce* + *dice*|0.813|0.814|
+|-|-|1*bce* + 2*dice*|0.853|0.814|
 |-|-|*dice*|**0.860**|**0.817**|
 
 <br/>
